@@ -88,6 +88,42 @@ public class ConduitContext(DbContextOptions options) : DbContext(options)
                 .HasForeignKey(pt => pt.TargetId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // physical per-engine type mapping only; SQL Server keeps its defaults so its
+        // behavior is unchanged. There is no provider logic anywhere in the features.
+        if (Database.IsNpgsql())
+        {
+            // timestamps are written as UTC (DateTime.UtcNow), so on PostgreSQL they map to
+            // timestamp with time zone; SQL Server keeps its datetime2 default
+            modelBuilder.Entity<Article>(b =>
+            {
+                b.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+                b.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<Comment>(b =>
+            {
+                b.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+                b.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            });
+
+            // case-insensitive equality on identity strings to match the SQL Server default
+            // collation. The collation must exist in the database before EnsureCreated:
+            // CREATE COLLATION conduit_ci (provider = icu, locale = 'und-u-ks-level2', deterministic = false);
+            modelBuilder.Entity<Person>(b =>
+            {
+                b.Property(x => x.Username).UseCollation("conduit_ci");
+                b.Property(x => x.Email).UseCollation("conduit_ci");
+            });
+
+            modelBuilder.Entity<Article>(b => b.Property(x => x.Slug).UseCollation("conduit_ci"));
+
+            modelBuilder.Entity<Tag>(b => b.Property(x => x.TagId).UseCollation("conduit_ci"));
+
+            modelBuilder.Entity<ArticleTag>(b =>
+                b.Property(x => x.TagId).UseCollation("conduit_ci")
+            );
+        }
     }
 
     #region Transaction Handling

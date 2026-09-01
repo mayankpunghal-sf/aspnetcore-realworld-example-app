@@ -5,42 +5,65 @@ using Conduit.Infrastructure;
 using Conduit.Infrastructure.Errors;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 
-// read database configuration (database provider + database connection) from environment variables
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_PROVIDER)
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_CONNECTION_STRING)
-var defaultDatabaseConnectionString = "Filename=realworld.db";
-var defaultDatabaseProvider = "sqlite";
-
 var builder = WebApplication.CreateBuilder(args);
 
-// take the connection string from the environment variable or use hard-coded database name
-var connectionString = defaultDatabaseConnectionString;
+// resolve the database engine exactly once at startup from the Data:Provider configuration
+// key (values: SqlServer | PostgreSql). There is no default engine and no auto-detection: a
+// missing or unknown value fails fast instead of falling back.
+var databaseProviderValue = builder.Configuration["Data:Provider"];
+var databaseProvider = databaseProviderValue?.Trim().ToLowerInvariant() switch
+{
+    "sqlserver" => DatabaseProvider.SqlServer,
+    "postgresql" => DatabaseProvider.PostgreSql,
+    _ => throw new InvalidOperationException(
+        "Missing or invalid configuration key 'Data:Provider' (found value "
+            + (databaseProviderValue is null ? "<missing>" : $"'{databaseProviderValue}'")
+            + "). Allowed values: SqlServer, PostgreSql."
+    ),
+};
 
-// take the database provider from the environment variable or use hard-coded database provider
-var databaseProvider = defaultDatabaseProvider;
+// the two named connection strings are configured side by side; only the selected engine's
+// string is required. Startup asserts it exists and is non-empty.
+var connectionString = databaseProvider switch
+{
+    DatabaseProvider.SqlServer => builder.Configuration.GetConnectionString("AppDb_SqlServer"),
+    DatabaseProvider.PostgreSql => builder.Configuration.GetConnectionString("AppDb_PostgreSql"),
+    _ => null,
+};
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    var expectedConnectionString = databaseProvider switch
+    {
+        DatabaseProvider.SqlServer => "AppDb_SqlServer",
+        _ => "AppDb_PostgreSql",
+    };
+
+    throw new InvalidOperationException(
+        $"Missing or empty connection string '{expectedConnectionString}' for the selected "
+            + $"database provider '{databaseProvider}'. Configure it under ConnectionStrings."
+    );
+}
+
+builder.Services.AddSingleton<IDatabaseProviderAccessor>(
+    new DatabaseProviderAccessor(databaseProvider)
+);
 
 builder.Services.AddDbContext<ConduitContext>(options =>
 {
-    if (databaseProvider.ToLowerInvariant().Trim().Equals("sqlite", StringComparison.Ordinal))
+    switch (databaseProvider)
     {
-        options.UseSqlite(connectionString);
-    }
-    else if (
-        databaseProvider.ToLowerInvariant().Trim().Equals("sqlserver", StringComparison.Ordinal)
-    )
-    {
-        // only works in windows container
-        options.UseSqlServer(connectionString);
-    }
-    else
-    {
-        throw new InvalidOperationException(
-            "Database provider unknown. Please check configuration"
-        );
+        case DatabaseProvider.SqlServer:
+            options.UseSqlServer(connectionString);
+            break;
+        case DatabaseProvider.PostgreSql:
+            options.UseNpgsql(connectionString);
+            break;
     }
 });
 

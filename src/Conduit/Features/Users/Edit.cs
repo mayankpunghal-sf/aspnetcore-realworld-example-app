@@ -131,7 +131,7 @@ public class Edit
         {
             var currentUsername = currentUserAccessor.GetCurrentUsername();
             var person = await context
-                .Persons.Where(x => x.Username == currentUsername)
+                .Persons.Where(x => x.Username!.ToLower() == currentUsername!.ToLower())
                 .FirstOrDefaultAsync(cancellationToken);
             if (person is null)
             {
@@ -142,7 +142,9 @@ public class Edit
             {
                 if (
                     await context
-                        .Persons.Where(x => x.Username == message.User.Username)
+                        .Persons.Where(x =>
+                            x.Username!.ToLower() == message.User.Username!.ToLower()
+                        )
                         .AnyAsync(cancellationToken)
                 )
                 {
@@ -156,7 +158,7 @@ public class Edit
             {
                 if (
                     await context
-                        .Persons.Where(x => x.Email == message.User.Email)
+                        .Persons.Where(x => x.Email!.ToLower() == message.User.Email!.ToLower())
                         .AnyAsync(cancellationToken)
                 )
                 {

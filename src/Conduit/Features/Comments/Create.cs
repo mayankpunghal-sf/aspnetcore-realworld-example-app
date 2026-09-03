@@ -43,7 +43,7 @@ public class Create
             }
 
             var author = await context.Persons.FirstAsync(
-                x => x.Username == currentUserAccessor.GetCurrentUsername(),
+                x => x.Username!.ToLower() == currentUserAccessor.GetCurrentUsername()!.ToLower(),
                 cancellationToken
             );
 

@@ -35,7 +35,7 @@ public class Delete
                 ?? throw new RestException(HttpStatusCode.NotFound, "article", Constants.NOT_FOUND);
 
             var person = await context.Persons.FirstOrDefaultAsync(
-                x => x.Username == currentUserAccessor.GetCurrentUsername(),
+                x => x.Username!.ToLower() == currentUserAccessor.GetCurrentUsername()!.ToLower(),
                 cancellationToken
             );
             if (person is null)

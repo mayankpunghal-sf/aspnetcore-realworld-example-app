@@ -39,7 +39,7 @@ public class Add
             }
 
             var person = await context.Persons.FirstOrDefaultAsync(
-                x => x.Username == currentUserAccessor.GetCurrentUsername(),
+                x => x.Username!.ToLower() == currentUserAccessor.GetCurrentUsername()!.ToLower(),
                 cancellationToken
             );
 

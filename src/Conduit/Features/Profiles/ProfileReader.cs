@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using Conduit.Infrastructure;
 using Conduit.Infrastructure.Errors;
 using Microsoft.EntityFrameworkCore;
+// CA1304/CA1311/CA1862: string.ToLower() must stay inside EF Core expression trees so it translates to
+// LOWER() on both SQL Server and PostgreSQL; string.Equals(StringComparison) is not translatable to SQL.
+#pragma warning disable CA1304, CA1311, CA1862
 
 namespace Conduit.Features.Profiles;
 
@@ -23,7 +26,10 @@ public class ProfileReader(
 
         var person = await context
             .Persons.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username == username, cancellationToken);
+            .FirstOrDefaultAsync(
+                x => x.Username!.ToLower() == username.ToLower(),
+                cancellationToken
+            );
         if (person is null)
         {
             throw new RestException(HttpStatusCode.NotFound, "profile", Constants.NOT_FOUND);
@@ -36,7 +42,10 @@ public class ProfileReader(
             var currentPerson = await context
                 .Persons.Include(x => x.Following)
                 .Include(x => x.Followers)
-                .FirstOrDefaultAsync(x => x.Username == currentUserName, cancellationToken);
+                .FirstOrDefaultAsync(
+                    x => x.Username!.ToLower() == currentUserName!.ToLower(),
+                    cancellationToken
+                );
 
             if (currentPerson is null)
             {

@@ -2,7 +2,9 @@ services:
   conduit:
     build: .
     environment:
-     - ASPNETCORE_Conduit_DatabaseProvider=${ASPNETCORE_Conduit_DatabaseProvider}
-     - ASPNETCORE_Conduit_ConnectionString=${ASPNETCORE_Conduit_ConnectionString}
+     - ASPNETCORE_Data__Provider=${ASPNETCORE_Data__Provider}
+     - ASPNETCORE_ConnectionStrings__AppDb_Sqlite=${ASPNETCORE_ConnectionStrings__AppDb_Sqlite}
+     - ASPNETCORE_ConnectionStrings__AppDb_SqlServer=${ASPNETCORE_ConnectionStrings__AppDb_SqlServer}
+     - ASPNETCORE_ConnectionStrings__AppDb_PostgreSql=${ASPNETCORE_ConnectionStrings__AppDb_PostgreSql}
     ports:
      - "8080:8080"

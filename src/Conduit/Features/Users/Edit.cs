@@ -10,6 +10,9 @@ using Conduit.Infrastructure.Security;
 using FluentValidation;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+// CA1304/CA1311/CA1862: string.ToLower() must stay inside EF Core expression trees so it translates to
+// LOWER() on both SQL Server and PostgreSQL; string.Equals(StringComparison) is not translatable to SQL.
+#pragma warning disable CA1304, CA1311, CA1862
 
 namespace Conduit.Features.Users;
 
@@ -131,7 +134,7 @@ public class Edit
         {
             var currentUsername = currentUserAccessor.GetCurrentUsername();
             var person = await context
-                .Persons.Where(x => x.Username == currentUsername)
+                .Persons.Where(x => x.Username!.ToLower() == currentUsername!.ToLower())
                 .FirstOrDefaultAsync(cancellationToken);
             if (person is null)
             {
@@ -142,7 +145,9 @@ public class Edit
             {
                 if (
                     await context
-                        .Persons.Where(x => x.Username == message.User.Username)
+                        .Persons.Where(x =>
+                            x.Username!.ToLower() == message.User.Username!.ToLower()
+                        )
                         .AnyAsync(cancellationToken)
                 )
                 {
@@ -156,7 +161,7 @@ public class Edit
             {
                 if (
                     await context
-                        .Persons.Where(x => x.Email == message.User.Email)
+                        .Persons.Where(x => x.Email!.ToLower() == message.User.Email!.ToLower())
                         .AnyAsync(cancellationToken)
                 )
                 {

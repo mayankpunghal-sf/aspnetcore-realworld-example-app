@@ -6,6 +6,9 @@ using Conduit.Infrastructure;
 using Conduit.Infrastructure.Errors;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+// CA1304/CA1311/CA1862: string.ToLower() must stay inside EF Core expression trees so it translates to
+// LOWER() on both SQL Server and PostgreSQL; string.Equals(StringComparison) is not translatable to SQL.
+#pragma warning disable CA1304, CA1311, CA1862
 
 namespace Conduit.Features.Articles;
 
@@ -37,7 +40,9 @@ public class List
                 var currentUser = await context
                     .Persons.Include(x => x.Followers)
                     .FirstOrDefaultAsync(
-                        x => x.Username == currentUserAccessor.GetCurrentUsername(),
+                        x =>
+                            x.Username!.ToLower()
+                            == currentUserAccessor.GetCurrentUsername()!.ToLower(),
                         cancellationToken
                     );
 
@@ -71,7 +76,7 @@ public class List
             if (!string.IsNullOrWhiteSpace(message.Author))
             {
                 var author = await context.Persons.FirstOrDefaultAsync(
-                    x => x.Username == message.Author,
+                    x => x.Username!.ToLower() == message.Author!.ToLower(),
                     cancellationToken
                 );
                 if (author != null)
@@ -87,7 +92,7 @@ public class List
             if (!string.IsNullOrWhiteSpace(message.FavoritedUsername))
             {
                 var author = await context.Persons.FirstOrDefaultAsync(
-                    x => x.Username == message.FavoritedUsername,
+                    x => x.Username!.ToLower() == message.FavoritedUsername!.ToLower(),
                     cancellationToken
                 );
                 if (author != null)
@@ -121,7 +126,9 @@ public class List
             if (currentUsername != null)
             {
                 var followedIds = await context
-                    .FollowedPeople.Where(x => x.Observer!.Username == currentUsername)
+                    .FollowedPeople.Where(x =>
+                        x.Observer!.Username!.ToLower() == currentUsername.ToLower()
+                    )
                     .Select(x => x.TargetId)
                     .ToListAsync(cancellationToken);
                 foreach (var author in articles.Select(x => x.Author))

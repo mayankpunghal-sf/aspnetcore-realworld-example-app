@@ -20,6 +20,23 @@ public class ConduitContext(DbContextOptions options) : DbContext(options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        if (Database.IsNpgsql())
+        {
+            // Npgsql 6+ maps DateTime by column type: pin UTC instants to timestamp with time
+            // zone so Kind=Utc writes and reads round-trip on PostgreSQL (SqlServer/Sqlite model untouched)
+            modelBuilder.Entity<Article>(b =>
+            {
+                b.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+                b.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<Comment>(b =>
+            {
+                b.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+                b.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            });
+        }
+
         // timestamps are stored as UTC; restore the DateTimeKind lost by providers like SQLite so
         // they serialize with the trailing 'Z' the RealWorld spec relies on
         modelBuilder.Entity<Article>(b =>

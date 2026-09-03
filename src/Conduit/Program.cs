@@ -9,38 +9,42 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 
-// read database configuration (database provider + database connection) from environment variables
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_PROVIDER)
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_CONNECTION_STRING)
-var defaultDatabaseConnectionString = "Filename=realworld.db";
-var defaultDatabaseProvider = "sqlite";
-
 var builder = WebApplication.CreateBuilder(args);
 
-// take the connection string from the environment variable or use hard-coded database name
-var connectionString = defaultDatabaseConnectionString;
-
-// take the database provider from the environment variable or use hard-coded database provider
-var databaseProvider = defaultDatabaseProvider;
+// resolve the database provider exactly once at startup (R7): the switch is Data:Provider
+// and the matching named connection string must exist and be non-empty
+var databaseProvider = DatabaseProviderParser.Parse(builder.Configuration["Data:Provider"]);
+var connectionStringKey = databaseProvider switch
+{
+    DatabaseProvider.Sqlite => "AppDb_Sqlite",
+    DatabaseProvider.SqlServer => "AppDb_SqlServer",
+    DatabaseProvider.PostgreSql => "AppDb_PostgreSql",
+    _ => throw new InvalidOperationException(
+        $"Database provider unknown. Please check configuration: {databaseProvider}"
+    ),
+};
+var connectionString = builder.Configuration[$"ConnectionStrings:{connectionStringKey}"];
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        $"No connection string configured for database provider {databaseProvider}. Please set ConnectionStrings:{connectionStringKey}."
+    );
+}
 
 builder.Services.AddDbContext<ConduitContext>(options =>
 {
-    if (databaseProvider.ToLowerInvariant().Trim().Equals("sqlite", StringComparison.Ordinal))
+    switch (databaseProvider)
     {
-        options.UseSqlite(connectionString);
-    }
-    else if (
-        databaseProvider.ToLowerInvariant().Trim().Equals("sqlserver", StringComparison.Ordinal)
-    )
-    {
-        // only works in windows container
-        options.UseSqlServer(connectionString);
-    }
-    else
-    {
-        throw new InvalidOperationException(
-            "Database provider unknown. Please check configuration"
-        );
+        case DatabaseProvider.Sqlite:
+            options.UseSqlite(connectionString);
+            break;
+        case DatabaseProvider.SqlServer:
+            // only works in windows container
+            options.UseSqlServer(connectionString);
+            break;
+        case DatabaseProvider.PostgreSql:
+            options.UseNpgsql(connectionString);
+            break;
     }
 });
 

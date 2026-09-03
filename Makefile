@@ -11,7 +11,7 @@ submodule:
 	git submodule update --init realworld
 
 run-local:
-	ASPNETCORE_URLS=$(API_URL) dotnet run --project $(PROJECT)
+	ASPNETCORE_URLS=$(API_URL) Data__Provider=Sqlite dotnet run --project $(PROJECT)
 
 # API spec tests against an already running server (make run-local in another terminal)
 test-hurl:
@@ -30,7 +30,7 @@ test-bruno-with-managed-server:
 # starts the API on a fresh database, waits for it, runs $(1), then shuts the API down
 define run_with_managed_server
 	rm -f src/Conduit/realworld.db; \
-	ASPNETCORE_URLS=$(API_URL) dotnet run --project $(PROJECT) & \
+	ASPNETCORE_URLS=$(API_URL) Data__Provider=Sqlite dotnet run --project $(PROJECT) & \
 	SERVER_PID=$$!; \
 	timeout 120 bash -c 'until curl -s $(API_URL)/api/tags > /dev/null; do sleep 0.5; done'; \
 	HOST=$(API_URL) $(1); \

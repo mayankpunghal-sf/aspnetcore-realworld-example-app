@@ -23,7 +23,10 @@ public class ProfileReader(
 
         var person = await context
             .Persons.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username == username, cancellationToken);
+            .FirstOrDefaultAsync(
+                x => x.Username!.ToLower() == username.ToLower(),
+                cancellationToken
+            );
         if (person is null)
         {
             throw new RestException(HttpStatusCode.NotFound, "profile", Constants.NOT_FOUND);
@@ -36,7 +39,10 @@ public class ProfileReader(
             var currentPerson = await context
                 .Persons.Include(x => x.Following)
                 .Include(x => x.Followers)
-                .FirstOrDefaultAsync(x => x.Username == currentUserName, cancellationToken);
+                .FirstOrDefaultAsync(
+                    x => x.Username!.ToLower() == currentUserName.ToLower(),
+                    cancellationToken
+                );
 
             if (currentPerson is null)
             {

@@ -47,7 +47,7 @@ public class Create
         {
             if (
                 await context
-                    .Persons.Where(x => x.Username == message.User.Username)
+                    .Persons.Where(x => x.Username!.ToLower() == message.User.Username!.ToLower())
                     .AnyAsync(cancellationToken)
             )
             {
@@ -56,7 +56,7 @@ public class Create
 
             if (
                 await context
-                    .Persons.Where(x => x.Email == message.User.Email)
+                    .Persons.Where(x => x.Email!.ToLower() == message.User.Email!.ToLower())
                     .AnyAsync(cancellationToken)
             )
             {

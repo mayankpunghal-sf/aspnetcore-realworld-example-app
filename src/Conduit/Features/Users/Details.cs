@@ -33,7 +33,10 @@ public class Details
         {
             var person = await context
                 .Persons.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Username == message.Username, cancellationToken);
+                .FirstOrDefaultAsync(
+                    x => x.Username!.ToLower() == message.Username.ToLower(),
+                    cancellationToken
+                );
 
             if (person == null)
             {

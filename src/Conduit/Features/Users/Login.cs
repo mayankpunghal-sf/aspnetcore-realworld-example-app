@@ -46,7 +46,7 @@ public class Login
         )
         {
             var person = await context
-                .Persons.Where(x => x.Email == message.User.Email)
+                .Persons.Where(x => x.Email!.ToLower() == message.User.Email!.ToLower())
                 .SingleOrDefaultAsync(cancellationToken);
             if (person == null)
             {

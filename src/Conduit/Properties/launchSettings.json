@@ -20,8 +20,8 @@
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "DB_CONNECTION_STRING": "C:\\Users\\USER\\source\\repos\\aspnetcore-realworld-example-app\\src\\Conduit\\realworld.db",
-        "DB_TYPE": "sqlite"
+        "Data__Provider": "Sqlite",
+        "ConnectionStrings__AppDb_Sqlite": "Filename=realworld.db"
       }
     }
   }

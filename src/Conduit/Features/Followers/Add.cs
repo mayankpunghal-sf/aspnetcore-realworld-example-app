@@ -32,7 +32,7 @@ public class Add
         )
         {
             var target = await context.Persons.FirstOrDefaultAsync(
-                x => x.Username == message.Username,
+                x => x.Username!.ToLower() == message.Username.ToLower(),
                 cancellationToken
             );
 
@@ -42,7 +42,7 @@ public class Add
             }
 
             var observer = await context.Persons.FirstOrDefaultAsync(
-                x => x.Username == currentUserAccessor.GetCurrentUsername(),
+                x => x.Username!.ToLower() == currentUserAccessor.GetCurrentUsername()!.ToLower(),
                 cancellationToken
             );
 

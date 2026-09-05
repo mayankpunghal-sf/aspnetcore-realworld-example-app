@@ -9,38 +9,31 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 
-// read database configuration (database provider + database connection) from environment variables
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_PROVIDER)
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_CONNECTION_STRING)
-var defaultDatabaseConnectionString = "Filename=realworld.db";
-var defaultDatabaseProvider = "sqlite";
-
 var builder = WebApplication.CreateBuilder(args);
 
-// take the connection string from the environment variable or use hard-coded database name
-var connectionString = defaultDatabaseConnectionString;
-
-// take the database provider from the environment variable or use hard-coded database provider
-var databaseProvider = defaultDatabaseProvider;
+// read database configuration (database provider + database connection) from configuration;
+// resolved once into a typed, immutable selection — unknown providers and missing connection
+// strings fail fast at startup
+var databaseSelection = DatabaseProviderSelection.Resolve(builder.Configuration);
 
 builder.Services.AddDbContext<ConduitContext>(options =>
 {
-    if (databaseProvider.ToLowerInvariant().Trim().Equals("sqlite", StringComparison.Ordinal))
+    switch (databaseSelection.Provider)
     {
-        options.UseSqlite(connectionString);
-    }
-    else if (
-        databaseProvider.ToLowerInvariant().Trim().Equals("sqlserver", StringComparison.Ordinal)
-    )
-    {
-        // only works in windows container
-        options.UseSqlServer(connectionString);
-    }
-    else
-    {
-        throw new InvalidOperationException(
-            "Database provider unknown. Please check configuration"
-        );
+        case DatabaseProvider.Sqlite:
+            options.UseSqlite(databaseSelection.ConnectionString);
+            break;
+        case DatabaseProvider.SqlServer:
+            // only works in windows container
+            options.UseSqlServer(databaseSelection.ConnectionString);
+            break;
+        case DatabaseProvider.PostgreSql:
+            options.UseNpgsql(databaseSelection.ConnectionString);
+            break;
+        default:
+            throw new InvalidOperationException(
+                "Database provider unknown. Please check configuration"
+            );
     }
 });
 

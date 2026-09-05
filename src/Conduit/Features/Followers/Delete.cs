@@ -30,10 +30,16 @@ public class Delete
             CancellationToken cancellationToken
         )
         {
+            var usernameLower = message.Username.ToLowerInvariant();
+
+            // ToLower() on the entity column is translated by EF Core into SQL LOWER(); .NET
+            // culture rules do not apply server-side, so the culture analyzers are suppressed here.
+#pragma warning disable CA1304, CA1311, CA1862
             var target = await context.Persons.FirstOrDefaultAsync(
-                x => x.Username == message.Username,
+                x => x.Username!.ToLower() == usernameLower,
                 cancellationToken
             );
+#pragma warning restore CA1304, CA1311
 
             if (target is null)
             {

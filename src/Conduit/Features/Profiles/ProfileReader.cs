@@ -21,9 +21,15 @@ public class ProfileReader(
     {
         var currentUserName = currentUserAccessor.GetCurrentUsername();
 
+        var usernameLower = username.ToLowerInvariant();
+
+        // ToLower() on the entity column is translated by EF Core into SQL LOWER(); .NET
+        // culture rules do not apply server-side, so the culture analyzers are suppressed here.
+#pragma warning disable CA1304, CA1311, CA1862
         var person = await context
             .Persons.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username == username, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Username!.ToLower() == usernameLower, cancellationToken);
+#pragma warning restore CA1304, CA1311
         if (person is null)
         {
             throw new RestException(HttpStatusCode.NotFound, "profile", Constants.NOT_FOUND);

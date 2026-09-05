@@ -140,11 +140,14 @@ public class Edit
 
             if (message.User.UsernameSet && message.User.Username != person.Username)
             {
+                var username = message.User.Username!.ToLowerInvariant();
+#pragma warning disable CA1304, CA1311, CA1862 // ToLower() on the column becomes SQL LOWER(); culture rules don't apply server-side
                 if (
                     await context
-                        .Persons.Where(x => x.Username == message.User.Username)
+                        .Persons.Where(x => x.Username!.ToLower() == username)
                         .AnyAsync(cancellationToken)
                 )
+#pragma warning restore CA1304, CA1311
                 {
                     throw new RestException(HttpStatusCode.Conflict, "username", Constants.IN_USE);
                 }
@@ -154,11 +157,14 @@ public class Edit
 
             if (message.User.EmailSet && message.User.Email != person.Email)
             {
+                var email = message.User.Email!.ToLowerInvariant();
+#pragma warning disable CA1304, CA1311, CA1862 // ToLower() on the column becomes SQL LOWER(); culture rules don't apply server-side
                 if (
                     await context
-                        .Persons.Where(x => x.Email == message.User.Email)
+                        .Persons.Where(x => x.Email!.ToLower() == email)
                         .AnyAsync(cancellationToken)
                 )
+#pragma warning restore CA1304, CA1311
                 {
                     throw new RestException(HttpStatusCode.Conflict, "email", Constants.IN_USE);
                 }

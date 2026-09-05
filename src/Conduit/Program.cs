@@ -5,42 +5,65 @@ using Conduit.Infrastructure;
 using Conduit.Infrastructure.Errors;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 
-// read database configuration (database provider + database connection) from environment variables
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_PROVIDER)
-//Environment.GetEnvironmentVariable(DEFAULT_DATABASE_CONNECTION_STRING)
+// read database configuration (database provider + database connection) from configuration
+// (appsettings.json and/or environment variables)
 var defaultDatabaseConnectionString = "Filename=realworld.db";
 var defaultDatabaseProvider = "sqlite";
 
 var builder = WebApplication.CreateBuilder(args);
 
-// take the connection string from the environment variable or use hard-coded database name
-var connectionString = defaultDatabaseConnectionString;
+// resolve the database provider once at startup into a typed value; unknown values fail fast
+var databaseProvider = DatabaseProviderResolver.Resolve(
+    builder.Configuration["Conduit:DatabaseProvider"]
+        ?? Environment.GetEnvironmentVariable("ASPNETCORE_Conduit_DatabaseProvider")
+        ?? defaultDatabaseProvider
+);
 
-// take the database provider from the environment variable or use hard-coded database provider
-var databaseProvider = defaultDatabaseProvider;
+// connection string for the selected engine: the per-engine named connection string first, then
+// the shared Conduit:ConnectionString setting, then the hard-coded SQLite default
+var connectionString =
+    builder.Configuration.GetConnectionString(
+        databaseProvider switch
+        {
+            DatabaseProvider.PostgreSql => "AppDb_PostgreSql",
+            DatabaseProvider.SqlServer => "AppDb_SqlServer",
+            _ => "AppDb_Sqlite",
+        }
+    )
+    ?? builder.Configuration["Conduit:ConnectionString"]
+    ?? Environment.GetEnvironmentVariable("ASPNETCORE_Conduit_ConnectionString")
+    ?? (databaseProvider == DatabaseProvider.Sqlite ? defaultDatabaseConnectionString : null);
+
+// fail fast at startup when the selected engine has no usable connection string
+// (placeholder-only values from appsettings.json are rejected too)
+if (string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains('<'))
+{
+    throw new InvalidOperationException(
+        $"No connection string configured for database provider '{databaseProvider}'. "
+            + "Set 'ConnectionStrings:AppDb_"
+            + databaseProvider
+            + "' or 'Conduit:ConnectionString'."
+    );
+}
 
 builder.Services.AddDbContext<ConduitContext>(options =>
 {
-    if (databaseProvider.ToLowerInvariant().Trim().Equals("sqlite", StringComparison.Ordinal))
+    switch (databaseProvider)
     {
-        options.UseSqlite(connectionString);
-    }
-    else if (
-        databaseProvider.ToLowerInvariant().Trim().Equals("sqlserver", StringComparison.Ordinal)
-    )
-    {
-        // only works in windows container
-        options.UseSqlServer(connectionString);
-    }
-    else
-    {
-        throw new InvalidOperationException(
-            "Database provider unknown. Please check configuration"
-        );
+        case DatabaseProvider.Sqlite:
+            options.UseSqlite(connectionString);
+            break;
+        case DatabaseProvider.SqlServer:
+            options.UseSqlServer(connectionString);
+            break;
+        case DatabaseProvider.PostgreSql:
+            options.UseNpgsql(connectionString);
+            break;
     }
 });
 

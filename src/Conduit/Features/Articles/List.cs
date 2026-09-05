@@ -70,10 +70,14 @@ public class List
 
             if (!string.IsNullOrWhiteSpace(message.Author))
             {
+                // ToLower() on the entity column is translated by EF Core into SQL LOWER(); .NET
+                // culture rules do not apply server-side, so the culture analyzers are suppressed.
+#pragma warning disable CA1304, CA1311, CA1862
                 var author = await context.Persons.FirstOrDefaultAsync(
-                    x => x.Username == message.Author,
+                    x => x.Username!.ToLower() == message.Author.ToLowerInvariant(),
                     cancellationToken
                 );
+#pragma warning restore CA1304, CA1311
                 if (author != null)
                 {
                     queryable = queryable.Where(x => x.Author == author);
@@ -86,10 +90,12 @@ public class List
 
             if (!string.IsNullOrWhiteSpace(message.FavoritedUsername))
             {
+#pragma warning disable CA1304, CA1311, CA1862
                 var author = await context.Persons.FirstOrDefaultAsync(
-                    x => x.Username == message.FavoritedUsername,
+                    x => x.Username!.ToLower() == message.FavoritedUsername.ToLowerInvariant(),
                     cancellationToken
                 );
+#pragma warning restore CA1304, CA1311
                 if (author != null)
                 {
                     queryable = queryable.Where(x =>

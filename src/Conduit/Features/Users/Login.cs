@@ -45,9 +45,15 @@ public class Login
             CancellationToken cancellationToken
         )
         {
+            var email = message.User.Email!.ToLowerInvariant();
+
+            // ToLower() on the entity column is translated by EF Core into SQL LOWER(); .NET
+            // culture rules do not apply server-side, so the culture analyzers are suppressed here.
+#pragma warning disable CA1304, CA1311, CA1862
             var person = await context
-                .Persons.Where(x => x.Email == message.User.Email)
+                .Persons.Where(x => x.Email!.ToLower() == email)
                 .SingleOrDefaultAsync(cancellationToken);
+#pragma warning restore CA1304, CA1311
             if (person == null)
             {
                 throw new RestException(HttpStatusCode.Unauthorized, "credentials", "invalid");

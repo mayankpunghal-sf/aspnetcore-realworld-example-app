@@ -45,9 +45,15 @@ public class Create
             CancellationToken cancellationToken
         )
         {
+            var username = message.User.Username!.ToLowerInvariant();
+            var email = message.User.Email!.ToLowerInvariant();
+
+            // ToLower() on the entity column is translated by EF Core into SQL LOWER(); .NET
+            // culture rules do not apply server-side, so the culture analyzers are suppressed here.
+#pragma warning disable CA1304, CA1311, CA1862
             if (
                 await context
-                    .Persons.Where(x => x.Username == message.User.Username)
+                    .Persons.Where(x => x.Username!.ToLower() == username)
                     .AnyAsync(cancellationToken)
             )
             {
@@ -56,12 +62,13 @@ public class Create
 
             if (
                 await context
-                    .Persons.Where(x => x.Email == message.User.Email)
+                    .Persons.Where(x => x.Email!.ToLower() == email)
                     .AnyAsync(cancellationToken)
             )
             {
                 throw new RestException(HttpStatusCode.Conflict, "email", Constants.IN_USE);
             }
+#pragma warning restore CA1304, CA1311
 
             var salt = Guid.NewGuid().ToByteArray();
             var person = new Person

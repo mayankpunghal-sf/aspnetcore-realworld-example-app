@@ -38,6 +38,24 @@ public class ConduitContext(DbContextOptions options) : DbContext(options)
                 .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
         });
 
+        // Npgsql 6+ writes DateTime values with Kind=Utc only to `timestamp with time zone` and
+        // throws against `timestamp without time zone` (the default for DateTime here); the audit
+        // timestamps above are always written as UTC, so map them to timestamptz on PostgreSQL only
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.Entity<Article>(b =>
+            {
+                b.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+                b.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<Comment>(b =>
+            {
+                b.Property(x => x.CreatedAt).HasColumnType("timestamp with time zone");
+                b.Property(x => x.UpdatedAt).HasColumnType("timestamp with time zone");
+            });
+        }
+
         modelBuilder.Entity<ArticleTag>(b =>
         {
             b.HasKey(t => new { t.ArticleId, t.TagId });

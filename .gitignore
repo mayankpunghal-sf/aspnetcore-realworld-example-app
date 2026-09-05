@@ -288,3 +288,6 @@ tools
 *.db-shm
 *.db-wal
 *.db
+
+# graphify code-graph cache
+graphify-out/
